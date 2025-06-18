@@ -18,7 +18,7 @@ func init() {
 	flag.StringFullVar(&Port, "p", "server", "port", "GPP_PORT", "18090", "Port")
 	flag.StringFullVar(&Domain, "d", "server", "domain", "GPP_DOMAIN", "", "Server Domain")
 	flag.StringFullVar(&Cookies, "c", "server", "cookies", "GPP_COOKIES", "", "Cookie")
-	flag.StringConfigVar(&Proxy, "p", "server", "proxy", "", "Proxy Support HTTP SOCKS5")
+	flag.StringConfigVar(&Proxy, "proxy", "server", "proxy", "", "Proxy Support HTTP SOCKS5")
 	flag.Parse()
 	log.SetLogLevel(log.LogLevelInfo)
 }
