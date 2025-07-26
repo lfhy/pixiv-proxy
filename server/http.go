@@ -109,16 +109,12 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
 	}
-	info, err := url.Parse(path)
+	info, err := url.Parse(realUrl)
 	if err != nil {
 		c.String(500, err.Error())
 		return
 	}
-	objectKey := info.Path
-	t := info.Query().Get("t")
-	if t != "" {
-		objectKey = filepath.Join(t, objectKey)
-	}
+	objectKey := filepath.Join(imgType, info.Path)
 	log.Infoln("当前对象:", objectKey)
 	if hasRemote {
 		url, ok := HeadRemote(objectKey)
