@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lfhy/log"
@@ -18,6 +19,8 @@ import (
 var hasRemote bool
 
 var minioClient *minio.Client
+
+var uploadLock sync.Map
 
 func InitRemote() {
 	info, err := url.Parse(conf.RemoteEndpoint)
@@ -45,11 +48,14 @@ func HeadRemote(objectName string) (string, bool) {
 }
 
 func PutDataToRemote(data []byte, objectName string) (string, error) {
+	defer uploadLock.Delete(objectName)
 	remoteFilePath := filepath.Join(conf.RemoteDir, objectName)
 	_, err := minioClient.PutObject(context.Background(), conf.RemoteBucket, remoteFilePath, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	if err != nil {
+		log.Warnln("上传失败:", err)
 		return "", fmt.Errorf("上传至S3失败: %v", err)
 	}
+	log.Infoln("上传完成:", objectName)
 	return GetObjecRemoteUrl(remoteFilePath), nil
 }
 

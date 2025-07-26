@@ -131,6 +131,10 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	data := proxyHttpReq(c, realUrl, "fetch pixiv image error", hasRemote)
 	if hasRemote && len(data) > 0 {
 		go func() {
+			_, ok := uploadLock.LoadOrStore(objectKey, true)
+			if ok {
+				return
+			}
 			log.Infoln("正在上传:", realUrl)
 			PutDataToRemote(data, objectKey)
 		}()
