@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -108,8 +109,18 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
 	}
+	info, err := url.Parse(path)
+	if err != nil {
+		c.String(500, err.Error())
+		return
+	}
+	objectKey := info.Path
+	t := info.Query().Get("t")
+	if t != "" {
+		objectKey = filepath.Join(t, objectKey)
+	}
 	if hasRemote {
-		url, ok := HeadRemote(path)
+		url, ok := HeadRemote(objectKey)
 		if ok {
 			http.Redirect(rw, req, url, http.StatusFound)
 			return
@@ -118,7 +129,7 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	data := proxyHttpReq(c, realUrl, "fetch pixiv image error", hasRemote)
 	if hasRemote && len(data) > 0 {
 		go func() {
-			PutDataToRemote(data, path)
+			PutDataToRemote(data, objectKey)
 		}()
 	}
 }
