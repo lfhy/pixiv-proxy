@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	_ "embed"
 	"go-pixiv-proxy/conf"
 	"io"
@@ -39,6 +40,9 @@ var (
 ![thumb](http://example.com/98505703?t=thumb)
 
 ![mini](http://example.com/98505703?t=mini)`
+
+	//go:embed markdeep.js
+	markDeepJS string
 )
 
 type Illust struct {
@@ -57,11 +61,15 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	log.Info(req.Method, " ", req.URL.String())
 	spl := strings.Split(path, "/")[1:]
 	switch spl[0] {
+	case "markdeep.js":
+		MarkDeep(rw, req)
+		return
 	case "":
 		c.String(200, indexHtml)
 		return
 	case "favicon.ico":
-		c.WriteHeader(404)
+		// c.WriteHeader(404)
+		http.Redirect(rw, req, "https://www.3000y.ac.cn/favicon.ico", http.StatusFound)
 		return
 	case "api":
 		handleIllustInfo(c)
@@ -100,7 +108,19 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
 	}
-	proxyHttpReq(c, realUrl, "fetch pixiv image error")
+	if hasRemote {
+		url, ok := HeadRemote(path)
+		if ok {
+			http.Redirect(rw, req, url, http.StatusFound)
+			return
+		}
+	}
+	data := proxyHttpReq(c, realUrl, "fetch pixiv image error", hasRemote)
+	if hasRemote && len(data) > 0 {
+		go func() {
+			PutDataToRemote(data, path)
+		}()
+	}
 }
 
 func handleIllustInfo(c *Context) {
@@ -110,7 +130,7 @@ func handleIllustInfo(c *Context) {
 		c.String(400, "pid invalid")
 		return
 	}
-	proxyHttpReq(c, "https://www.pixiv.net/ajax/illust/"+pid, "pixiv api error")
+	proxyHttpReq(c, "https://www.pixiv.net/ajax/illust/"+pid, "pixiv api error", false)
 }
 
 func getIllust(pid string) (*Illust, error) {
@@ -156,17 +176,28 @@ func (c *Context) WriteHeader(statusCode int) {
 	c.rw.WriteHeader(statusCode)
 }
 
-func proxyHttpReq(c *Context, url string, errMsg string) {
+func proxyHttpReq(c *Context, url string, errMsg string, buffer bool) []byte {
 	resp, err := httpGet(url)
 	if err != nil {
 		c.String(500, errMsg)
-		return
+		return nil
 	}
 	defer resp.Body.Close()
 	copyHeader(c.rw.Header(), resp.Header)
 	resp.Header.Del("Cookie")
 	resp.Header.Del("Set-Cookie")
-	_, _ = io.Copy(c.rw, resp.Body)
+	buff := bytes.NewBuffer(nil)
+	var writer io.Writer
+	if buffer {
+		writer = io.MultiWriter(c.rw, buff)
+	} else {
+		writer = c.rw
+	}
+	_, err = io.Copy(writer, resp.Body)
+	if err != nil && buffer {
+		return nil
+	}
+	return buff.Bytes()
 }
 
 func httpGet(u string) (*http.Response, error) {
