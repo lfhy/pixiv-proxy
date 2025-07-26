@@ -11,6 +11,7 @@ import (
 
 func Run() {
 	InitClient()
+	InitRemote()
 	if conf.Domain != "" {
 		indexHtml = strings.ReplaceAll(indexHtml, "{image-examples}", docExampleImg)
 		indexHtml = strings.ReplaceAll(indexHtml, "http://example.com", conf.Domain)
