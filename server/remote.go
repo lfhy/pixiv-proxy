@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lfhy/log"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -28,6 +29,7 @@ func InitRemote() {
 		Secure: info.Scheme == "https", // 如果使用 HTTPS 设置为 true
 	})
 	if err != nil {
+		log.Infoln("存储初始化失败:", err)
 		return
 	}
 	hasRemote = true
