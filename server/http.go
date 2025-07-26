@@ -119,9 +119,11 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	if t != "" {
 		objectKey = filepath.Join(t, objectKey)
 	}
+	log.Infoln("当前对象:", objectKey)
 	if hasRemote {
 		url, ok := HeadRemote(objectKey)
 		if ok {
+			log.Infoln("命中缓存:", url)
 			http.Redirect(rw, req, url, http.StatusFound)
 			return
 		}
@@ -129,6 +131,7 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	data := proxyHttpReq(c, realUrl, "fetch pixiv image error", hasRemote)
 	if hasRemote && len(data) > 0 {
 		go func() {
+			log.Infoln("正在上传:", realUrl)
 			PutDataToRemote(data, objectKey)
 		}()
 	}
